@@ -43,59 +43,43 @@ class MainActivity : AppCompatActivity() {
         }
         internetMonitor.start()
 
-        folderPicker.setupPicker { uri ->
-            settings.rootFolderUri = uri.toString()
-            updateFolderUI()
-            log("Folder selected: $uri")
-        }
-
-        updateFolderUI()
-    }
-
-    private fun setupUI() {
         binding.btnSelectFolder.setOnClickListener {
             folderPicker.launch()
         }
 
         binding.btnStartStop.setOnClickListener {
-            if (isServerRunning) {
-                stopServer()
-            } else {
-                startServer()
-            }
+            if (isServerRunning) stopServer() else startServer()
         }
 
         binding.btnOpenBrowser.setOnClickListener {
-            if (!isServerRunning) {
-                Toast.makeText(this, "Start server first!", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+            if (isServerRunning) {
+                binding.webView.visibility = View.VISIBLE
+                binding.scrollLogs.visibility = View.GONE
+                webViewController.loadUrl("http://localhost:${settings.serverPort}")
+            } else {
+                Toast.makeText(this, "Server not running", Toast.LENGTH_SHORT).show()
             }
-            toggleView()
         }
     }
 
-    private fun toggleView() {
-        if (binding.webView.visibility == View.VISIBLE) {
-            binding.webView.visibility = View.GONE
-            binding.scrollLogs.visibility = View.VISIBLE
-            binding.btnOpenBrowser.text = "Browse"
-        } else {
-            binding.webView.visibility = View.VISIBLE
-            binding.scrollLogs.visibility = View.GONE
-            binding.btnOpenBrowser.text = "Logs"
-            webViewController.loadUrl("http://localhost:${settings.serverPort}/")
+    private fun setupUI() {
+        updateFolderUI()
+        folderPicker.setupPicker { uri ->
+            settings.rootFolderUri = uri.toString()
+            updateFolderUI()
+            log("Selected folder: $uri")
         }
     }
 
     private fun startServer() {
-        val uriStr = settings.rootFolderUri
-        if (uriStr == null) {
+        val uriString = settings.rootFolderUri
+        if (uriString == null) {
             Toast.makeText(this, "Please select a folder first", Toast.LENGTH_SHORT).show()
             return
         }
 
         val intent = Intent(this, LocalWebServerService::class.java).apply {
-            putExtra("root_uri", uriStr)
+            putExtra("root_uri", uriString)
             putExtra("port", settings.serverPort)
         }
 
@@ -151,4 +135,3 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 }
-
