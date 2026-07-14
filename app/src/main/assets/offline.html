@@ -1,16 +1,83 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modo Offline</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LocalHub - Offline</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/app.css">
+    <style>
+        .offline-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+            text-align: center;
+            padding: 40px 20px;
+        }
+        .offline-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 24px;
+            background: var(--red-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+        .offline-icon svg {
+            color: var(--red);
+        }
+        .offline-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .offline-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            max-width: 280px;
+            line-height: 1.5;
+        }
+        .btn-retry {
+            margin-top: 28px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: opacity 0.15s ease;
+        }
+        .btn-retry:active {
+            opacity: 0.85;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Sin conexión</h1>
-        <p>Estás en modo offline, pero tus archivos locales siguen funcionando.</p>
-        <button onclick="history.back()">Volver</button>
+    <div class="app">
+        <div class="offline-wrap">
+            <div class="offline-icon">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                    <path d="M16.72 11.06A10.94 10.94 0 0119 12.55"/>
+                    <path d="M5 12.55a10.94 10.94 0 015.17-2.39"/>
+                    <path d="M10.71 5.05A16 16 0 0122.56 9"/>
+                    <path d="M1.42 9a15.91 15.91 0 014.7-2.88"/>
+                    <path d="M8.53 16.11a6 6 0 016.95 0"/>
+                    <line x1="12" y1="20" x2="12.01" y2="20"/>
+                </svg>
+            </div>
+            <h1 class="offline-title">You're Offline</h1>
+            <p class="offline-desc">No internet connection detected, but your local server files are still accessible.</p>
+            <button class="btn-retry" onclick="location.reload()">Try Again</button>
+        </div>
     </div>
 </body>
 </html>

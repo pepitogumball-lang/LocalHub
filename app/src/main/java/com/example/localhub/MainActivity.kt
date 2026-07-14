@@ -6,8 +6,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.webkit.WebChromeClient
 import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -20,7 +20,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var folderPicker: FolderPickerManager
     private lateinit var internetMonitor: InternetMonitor
     private lateinit var webViewController: WebViewController
-    
+
     private var isServerRunning = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,17 +28,31 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        setSupportActionBar(binding.toolbar)
+
         settings = AppSettings(this)
         folderPicker = FolderPickerManager(this)
         webViewController = WebViewController(binding.webView)
-        
+
         setupUI()
         setupPermissions()
         webViewController.init()
 
         internetMonitor = InternetMonitor(this) { isOnline ->
             runOnUiThread {
-                binding.tvInternet.text = "Internet: ${if (isOnline) "Connected" else "Offline"}"
+                binding.chipInternet.text = if (isOnline) "Connected" else "Offline"
+                binding.chipInternet.chipBackgroundColor = android.content.res.ColorStateList.valueOf(
+                    resources.getColor(
+                        if (isOnline) R.color.status_running else R.color.status_stopped,
+                        theme
+                    )
+                )
+                binding.chipInternet.setTextColor(
+                    resources.getColor(
+                        if (isOnline) R.color.status_running else R.color.status_stopped,
+                        theme
+                    )
+                )
             }
         }
         internetMonitor.start()
@@ -54,27 +68,34 @@ class MainActivity : AppCompatActivity() {
         binding.btnOpenBrowser.setOnClickListener {
             if (isServerRunning) {
                 binding.webView.visibility = View.VISIBLE
-                binding.scrollLogs.visibility = View.GONE
+                binding.cardLogs.visibility = View.GONE
                 webViewController.loadUrl("http://localhost:${settings.serverPort}")
             } else {
-                Toast.makeText(this, "Server not running", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Start the server first", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     private fun setupUI() {
         updateFolderUI()
+        updateServerStatus()
+
         folderPicker.setupPicker { uri ->
             settings.rootFolderUri = uri.toString()
             updateFolderUI()
-            log("Selected folder: $uri")
+            log("Folder selected")
+        }
+
+        // Restore server state if folder was previously selected
+        if (settings.rootFolderUri != null) {
+            binding.tvStatusDetail.text = "Ready to start"
         }
     }
 
     private fun startServer() {
         val uriString = settings.rootFolderUri
         if (uriString == null) {
-            Toast.makeText(this, "Please select a folder first", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Select a folder first", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -90,44 +111,77 @@ class MainActivity : AppCompatActivity() {
         }
 
         isServerRunning = true
-        binding.btnStartStop.text = "Stop"
-        binding.tvStatus.text = "Status: Running on port ${settings.serverPort}"
-        log("Server started on http://localhost:${settings.serverPort}")
+        updateServerStatus()
+        log("Server started on port ${settings.serverPort}")
     }
 
     private fun stopServer() {
         val intent = Intent(this, LocalWebServerService::class.java)
         stopService(intent)
         isServerRunning = false
-        binding.btnStartStop.text = "Start"
-        binding.tvStatus.text = "Status: Stopped"
+        updateServerStatus()
+
+        // Hide WebView, show logs
+        binding.webView.visibility = View.GONE
+        binding.cardLogs.visibility = View.VISIBLE
         log("Server stopped")
+    }
+
+    private fun updateServerStatus() {
+        if (isServerRunning) {
+            binding.tvStatus.text = "Server running"
+            binding.tvStatusDetail.text = "http://localhost:${settings.serverPort}"
+            binding.tvStatusDetail.setTextColor(resources.getColor(R.color.accent, theme))
+            binding.statusDot.setBackgroundResource(R.drawable.status_dot_running)
+            binding.btnStartStop.text = "Stop"
+        } else {
+            binding.tvStatus.text = "Server stopped"
+            binding.tvStatusDetail.text = "Select a folder and start the server"
+            binding.tvStatusDetail.setTextColor(resources.getColor(R.color.text_secondary, theme))
+            binding.statusDot.setBackgroundResource(R.drawable.status_dot_stopped)
+            binding.btnStartStop.text = "Start"
+        }
     }
 
     private fun updateFolderUI() {
         val uri = settings.rootFolderUri
-        binding.tvFolder.text = "Folder: ${uri ?: "None"}"
+        binding.tvFolder.text = if (uri != null) {
+            // Try to show a readable folder name
+            try {
+                val docFile = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, Uri.parse(uri))
+                docFile?.name ?: uri
+            } catch (e: Exception) {
+                uri
+            }
+        } else {
+            "No folder selected"
+        }
     }
 
     private fun setupPermissions() {
         val requestPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
-        ) { permissions ->
-            // Handle permissions results
-        }
+        ) { _ -> }
 
         val permissionsToRequest = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
         }
-        
+
         if (permissionsToRequest.isNotEmpty()) {
             requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
         }
     }
 
     private fun log(message: String) {
-        binding.tvLogs.append("$message\n")
+        val timestamp = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+            .format(java.util.Date())
+        binding.tvLogs.append("[$timestamp] $message\n")
+
+        // Auto-scroll to bottom
+        binding.scrollLogs.post {
+            binding.scrollLogs.fullScroll(View.FOCUS_DOWN)
+        }
     }
 
     override fun onDestroy() {
